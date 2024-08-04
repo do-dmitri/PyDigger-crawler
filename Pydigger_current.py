@@ -2,10 +2,9 @@
 # Crawler on Pydigger + Git. by DK
 # To be used on user's own risk, author takes no responsibility whatsoever.
 
-# Aug 2 2024.
-# # Ver 8. Last updates:
-#           Is made more readable
-#           Filters out links with pyproject.toml
+# Aug 4 2024.
+# # Ver 9. Last updates:
+#          -
 #
 #  The purpose of this module is to run through pydigger.com/stats -> "Has VCS but no author" page.
 #  The page shows list of projects with no "authors=<name>" line in setup.py file. This program is used to
@@ -34,8 +33,14 @@ def get_link_from_pdig(page: str) -> list:
     :param page: 'master' page on pydigger.com containing projects
     :return: list of links to projects' json files
     """
+    # checking if web page opens
+    response = requests.get(page)
+    if response.status_code != 200:
+        print('Failed to retrieve the webpage. Status code:', response.status_code)
+        return
+
     json_link_list = []
-    matches = re.findall(r'<td><a href="/pypi/([\w-]+)', page)
+    matches = re.findall(r'<td><a href="/pypi/([\w-]+)', response.text)
     for link in matches:
         json_link_list.append('https://pydigger.com/pypi/' + link)
     return json_link_list
@@ -137,27 +142,25 @@ def main():
     NUMBER_OF_ENTRIES = 400    # Number of projects to analyze, counting from the most recent entry
     pydigger_link = f'https://pydigger.com/search/has-vcs-no-author?q=&page=1&limit={NUMBER_OF_ENTRIES}'
 
-    # checking if web page opens
-    response = requests.get(pydigger_link)
-    if response.status_code != 200:
-        print('Failed to retrieve the webpage. Status code:', response.status_code)
-        return
+    # running preparation
+    pdig_link_list = get_link_from_pdig(pydigger_link)
 
+    # running 1st scan. Getting github links from json
     git_link_list = []
-    pdig_link_list = get_link_from_pdig(response.text)
     for i, link in enumerate(pdig_link_list):
         print('Scanning PyDigger entries: #', i)
         new_link_to_github = get_link_from_json(link)
         if new_link_to_github:
             git_link_list += new_link_to_github
 
-    print(f'Pydigger source: {len(pdig_link_list)}, alive on Github : {len(git_link_list)}')
+    print(f'Pydigger source: {len(pdig_link_list)}, alive on Github count: {len(git_link_list)}')
 
+    # running 2nd scan. Checking setup.py
     print('Ensuring setup.py on Github now..')
     gits_checked = check_setup_py_in_git(git_link_list)
     print('Projs with setup.py count: ', len(gits_checked))
-    # print(gits_checked)
 
+    # running 3rd scan. Checking pyproject.toml
     print('Filtering pyproject.toml files on Github now..')
     gits_checked = filter_toml_in_git(gits_checked)
     print('Projs without pyproject.toml count: ', len(gits_checked))
