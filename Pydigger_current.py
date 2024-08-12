@@ -3,7 +3,7 @@
 # To be used on user's own risk, author takes no responsibility whatsoever.
 
 # Aug 12 2024.
-# # Ver 10. Last updates:
+# # Ver 10  . Last updates:
 #          - Logs only not previously logged projects
 #
 #  The purpose of this module is to run through pydigger.com/stats -> "Has VCS but no author" page.
