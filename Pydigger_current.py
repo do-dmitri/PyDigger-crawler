@@ -2,9 +2,9 @@
 # Crawler on Pydigger + Git. by DK
 # To be used on user's own risk, author takes no responsibility whatsoever.
 
-# Aug 4 2024.
-# # Ver 9. Last updates:
-#          -
+# Aug 12 2024.
+# # Ver 10. Last updates:
+#          - Logs only not previously logged projects
 #
 #  The purpose of this module is to run through pydigger.com/stats -> "Has VCS but no author" page.
 #  The page shows list of projects with no "authors=<name>" line in setup.py file. This program is used to
@@ -138,9 +138,27 @@ def filter_toml_in_git(unfiltered_links: list) -> list:
     return filtered_links
 
 
+def filterout_logged(current_log_file_name, candidate_list) -> list:
+    filtered_list = []
+    count = 0
+    with open(current_log_file_name, 'r') as f:
+        in_str = f.read()
+    for candidate in candidate_list:
+        if candidate not in in_str.split():
+            filtered_list.append(candidate)
+        else:
+            count += 1
+            print('Removing : ', count, candidate)
+    print('Filtered as previously logged : ', count)
+    return filtered_list
+
+
 def main():
-    NUMBER_OF_ENTRIES = 400    # Number of projects to analyze, counting from the most recent entry
+    NUMBER_OF_ENTRIES = 20    # Number of projects to analyze, counting from the most recent entry
     pydigger_link = f'https://pydigger.com/search/has-vcs-no-author?q=&page=1&limit={NUMBER_OF_ENTRIES}'
+    log_file_name = 'git_log.txt'
+
+    print(f"Running for {NUMBER_OF_ENTRIES} projs..")
 
     # running preparation
     pdig_link_list = get_link_from_pdig(pydigger_link)
@@ -157,19 +175,24 @@ def main():
 
     # running 2nd scan. Checking setup.py
     print('Ensuring setup.py on Github now..')
-    gits_checked = check_setup_py_in_git(git_link_list)
-    print('Projs with setup.py count: ', len(gits_checked))
+    gits_checked_list = check_setup_py_in_git(git_link_list)
+    print('Projs with setup.py count: ', len(gits_checked_list))
 
     # running 3rd scan. Checking pyproject.toml
     print('Filtering pyproject.toml files on Github now..')
-    gits_checked = filter_toml_in_git(gits_checked)
-    print('Projs without pyproject.toml count: ', len(gits_checked))
+    gits_checked_list = filter_toml_in_git(gits_checked_list)
+    print('Projs without pyproject.toml count: ', len(gits_checked_list))
+
+    # filtering out already logged
+    gits_checked_list = filterout_logged(log_file_name, gits_checked_list)
+
+    print(' :\n' + '\n'.join(gits_checked_list) + '\n')
 
     # Appending list of resulted checked links into log file
     utc_now = datetime.datetime.utcnow()
-    output_lines = '\n\n\n\nResults ' + str(utc_now) + ' :\n' + '\n'.join(gits_checked) + '\n'
+    output_lines = '\n\n\n\nResults ' + str(utc_now) + ' :\n' + '\n'.join(gits_checked_list) + '\n'
 
-    with open('git_log.txt', 'a') as log_file:
+    with open(log_file_name, 'a') as log_file:
         log_file.write(output_lines)
 
 
